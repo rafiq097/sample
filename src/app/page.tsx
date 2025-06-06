@@ -1,22 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Filter, ChevronDown } from 'lucide-react';
-
-type Contact = {
-  address: string;
-  number: string;
-  email: string;
-};
-
-type Patient = {
-  patient_id: number;
-  patient_name: string;
-  age: number;
-  photo_url: string;
-  contact: Contact[];
-  medical_issue: string;
-};
+import { Search, Filter, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import TableView from '@/components/TableView';
+import CardView from '@/components/CardView';
+import Patient from '@/types/Patient';
 
 export default function PatientDirectory() {
   const [data, setData] = useState<Patient[]>([]);
@@ -26,6 +14,9 @@ export default function PatientDirectory() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('table');
   const [issues, setIssues] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [paginatedData, setPaginatedData] = useState<Patient[]>([]);
 
   useEffect(() => {
     fetch('/api/data')
@@ -60,128 +51,33 @@ export default function PatientDirectory() {
     }
 
     setFiltered(result);
+    setCurrentPage(1);
   }, [search, sortOrder, activeFilters, data]);
 
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedData(filtered.slice(startIndex, endIndex));
+  }, [filtered, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
+
   const toggleFilter = (filter: string) => {
-    setActiveFilters(prev => 
-      prev.includes(filter) 
+    setActiveFilters(prev =>
+      prev.includes(filter)
         ? prev.filter(f => f !== filter)
         : [...prev, filter]
     );
   };
-
-  const getColor = (issue: string) => {
-    const colors = {
-      'Fever': 'bg-red-100 text-red-700',
-      'Headache': 'bg-orange-100 text-orange-700', 
-      'Sore throat': 'bg-yellow-100 text-yellow-700',
-      'Sprained ankle': 'bg-green-100 text-green-700',
-      'Rash': 'bg-pink-100 text-pink-700',
-      'Ear infection': 'bg-blue-100 text-blue-700',
-      'Sinusitis': 'bg-gray-100 text-gray-700'
-    };
-    return colors[issue as keyof typeof colors] || 'bg-gray-100 text-gray-700';
-  };
-
-  const CardView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {filtered.map((patient) => (
-        <div key={patient.patient_id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <img
-              src={patient.photo_url}
-              alt={patient.patient_name}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <div className="flex-1">
-              <h3 className="font-medium text-sm">{patient.patient_name}</h3>
-              <p className="text-xs text-gray-500">ID-{patient.patient_id.toString().padStart(4, '0')}</p>
-            </div>
-            <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium">
-              Age {patient.age}
-            </button>
-          </div>
-          
-          <div className="mb-3">
-            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getColor(patient.medical_issue)}`}>
-              {patient.medical_issue}
-            </span>
-          </div>
-          
-          <div className="space-y-2 text-xs text-gray-600">
-            <div className="flex items-center gap-2">
-              <span>📍</span>
-              <span>{patient.contact[0]?.address}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>📞</span>
-              <span>{patient.contact[0]?.number}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>✉️</span>
-              <span className="truncate">{patient.contact[0]?.email}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const TableView = () => (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">ID</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Age</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Medical Issue</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Address</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Phone Number</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Email ID</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {filtered.map((patient) => (
-            <tr key={patient.patient_id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm">ID-{patient.patient_id.toString().padStart(4, '0')}</td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={patient.photo_url}
-                    alt={patient.patient_name}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                  <span className="text-sm font-medium">{patient.patient_name}</span>
-                </div>
-              </td>
-              <td className="px-4 py-3 text-sm">{patient.age}</td>
-              <td className="px-4 py-3">
-                <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getColor(patient.medical_issue)}`}>
-                  {patient.medical_issue}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-sm text-gray-600">{patient.contact[0]?.address}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">
-                {!patient.contact[0]?.number ? (
-                  <span className="text-red-500 font-medium">N/A</span>
-                ) : (
-                  patient.contact[0]?.number
-                )}
-              </td>
-              <td className="px-4 py-3 text-sm text-gray-600">
-                {!patient.contact[0]?.email ? (
-                  <span className="text-red-500 font-medium">N/A</span>
-                ) : (
-                  patient.contact[0]?.email
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 
   return (
     <div className="min-h-screen">
@@ -198,21 +94,19 @@ export default function PatientDirectory() {
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('table')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  viewMode === 'table' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${viewMode === 'table'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 Table View
               </button>
               <button
                 onClick={() => setViewMode('card')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  viewMode === 'card' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${viewMode === 'card'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 Card View
               </button>
@@ -255,11 +149,10 @@ export default function PatientDirectory() {
               <button
                 key={issue}
                 onClick={() => toggleFilter(issue)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  activeFilters.includes(issue)
-                    ? 'bg-blue-100 text-blue-700 border-blue-200'
-                    : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
-                }`}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${activeFilters.includes(issue)
+                  ? 'bg-blue-100 text-blue-700 border-blue-200'
+                  : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                  }`}
               >
                 {issue} ✕
               </button>
@@ -267,13 +160,86 @@ export default function PatientDirectory() {
           </div>
         </div>
 
-        {viewMode === 'card' ? <CardView /> : <TableView />}
+        {viewMode === 'card' ? <CardView paginatedData={paginatedData} /> : <TableView paginatedData={paginatedData} />}
 
         {filtered.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No patients found.</p>
           </div>
         )}
+
+        {filtered.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Show:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => handleItemsChange(Number(e.target.value))}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-gray-600">per page</span>
+                </div>
+
+                <div className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} patients
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => handlePageChange(pageNumber)}
+                        className={`px-3 py-2 text-sm border rounded-lg ${currentPage === pageNumber
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>)}
       </div>
     </div>
   );
